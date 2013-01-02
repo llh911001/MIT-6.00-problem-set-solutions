@@ -46,8 +46,7 @@ class SimpleVirus(object):
         returns True with probability self.clear_prob and otherwise returns
         False.
         """
-        rand = random.random()
-        if rand < self.clear_prob:
+        if random.random() < self.clear_prob:
             return True
         return False
 
@@ -71,8 +70,7 @@ class SimpleVirus(object):
         NoChildException if this virus particle does not reproduce.
         """
         reproduce_prob = self.max_birth_prob * (1 - pop_density)
-        rand = random.random()
-        if rand < reproduce_prob:
+        if random.random() < reproduce_prob:
             return SimpleVirus(self.max_birth_prob, self.clear_prob)
         else:
             raise NoChildException
@@ -121,7 +119,7 @@ class SimplePatient(object):
         returns: the total virus population at the end of the update (an
         integer)
         """
-        pop_density = self.getTotalPop() / self.max_pop
+        pop_density = self.getTotalPop() / float(self.max_pop)
         res = []
         for virus in self.viruses:
             if not virus.doesClear():
@@ -131,8 +129,6 @@ class SimplePatient(object):
                     res.append(child)
                 except NoChildException:
                     continue
-            else:
-                continue
         self.viruses = res
         return self.getTotalPop()
 
@@ -248,20 +244,15 @@ class ResistantVirus(SimpleVirus):
         max_birth_prob and clear_prob values as this virus. Raises a
         NoChildException if this virus particle does not reproduce.
         """
-        reproducable = False
         for drug in active_drugs:
-            if self.getResistance(drug):
-                reproducable = True
-        if not reproducable and active_drugs:
-            raise NoChildException
+            if not self.getResistance(drug):
+                raise NoChildException
 
         reproduce_prob = self.max_birth_prob * (1 - pop_density)
-        rand1 = random.random()
-        if rand1 < reproduce_prob:
+        if random.random() < reproduce_prob:
             child_resistances = {}
             for prd, tof in self.resistances.items():
-                rand2 = random.random()
-                if rand2 < self.mut_prob:
+                if random.random() < self.mut_prob:
                     child_resistances[prd] = not tof
                 else:
                     child_resistances[prd] = tof
@@ -353,7 +344,7 @@ class Patient(SimplePatient):
         returns: the total virus population at the end of the update (an
         integer)
         """
-        pop_density = self.getTotalPop() / self.max_pop
+        pop_density = self.getTotalPop() / float(self.max_pop)
         res = []
         for virus in self.viruses:
             if not virus.doesClear():
@@ -363,8 +354,6 @@ class Patient(SimplePatient):
                     res.append(child)
                 except NoChildException:
                     continue
-            else:
-                continue
         self.viruses = res
         return self.getTotalPop()
 
@@ -382,33 +371,21 @@ def problem4():
     total virus population vs. time  and guttagonol-resistant virus population
     vs. time are plotted
     """
-    viruses = [ResistantVirus(0.1, 0.05, {'guttagonol': False}, 0.005) for i in range(100)]
+    viruses = [ResistantVirus(0.1, 0.05, {'guttagonol': False}, 0.005) for _ in range(100)]
     patient = Patient(viruses, 1000)
 
-    no_guttagonol_total = []
-    no_guttagonol_resist = []
-    # no guttagonol added
-    for n in range(150):
-        total_pop1 = patient.update()
-        resist_pop1 = patient.getResistPop(['guttagonol'])
-        no_guttagonol_total.append(total_pop1)
-        no_guttagonol_resist.append(resist_pop1)
+    total_pop = []
+    resist_pop = []
+    for n in range(300):
+        total = patient.update()
+        resist = patient.getResistPop(['guttagonol'])
+        if n == 150:
+            patient.addPrescription('guttagonol') # add guttagonol to patient
+        total_pop.append(total)
+        resist_pop.append(resist)
 
-    patient.addPrescription('guttagonol') # add guttagonol to patient
-    with_guttagonol_total = []
-    with_guttagonol_resist = []
-    # with guttagonol added
-    for n in range(150):
-        total_pop2 = patient.update()
-        resist_pop2 = patient.getResistPop(['guttagonol'])
-        with_guttagonol_total.append(total_pop2)
-        with_guttagonol_resist.append(resist_pop2)
-
-    X = range(1, 301)
-    Y_total = no_guttagonol_total + with_guttagonol_total
-    Y_resist = no_guttagonol_resist + with_guttagonol_resist
-    pylab.plot(X, Y_total, color='blue', label='total virus population')
-    pylab.plot(X, Y_resist, color='green', label='guttagonol-resistent population')
+    pylab.plot(range(1, 301), total_pop, color='blue', label='total virus population')
+    pylab.plot(range(1, 301), resist_pop, color='green', label='guttagonol-resistent population')
     pylab.xticks(range(0, 301, 50))
     pylab.xlabel('Timesteps')
     pylab.ylabel('Virus population')
@@ -438,7 +415,38 @@ def problem5():
     150, 75, 0 timesteps (followed by an additional 150 timesteps of
     simulation).
     """
-    # TODO
+    import collections
+    num_trials = 100
+    print '\n%d patients -- run the sumulation for 300, 150, 75 and 0 time steps before administering guttagonol, each for %d patients\n' % (num_trials, num_trials)
+
+    delays = collections.defaultdict(list) # a dict of list, which contains the final virus population of each trial(patient)
+
+    for steps, delay in [(450,300), (300,150), (225,75), (150,0)]:
+        print '%d patients, %d time steps, treat, 150 more time steps\n' % (num_trials, delay)
+        for n in range(num_trials):
+            viruses = [ResistantVirus(0.1, 0.05, {'guttagonol': False}, 0.005) for _ in range(100)]
+            patient = Patient(viruses, 1000)
+            for i in range(steps):
+                total = patient.update()
+                if i == delay:
+                    patient.addPrescription('guttagonol')
+            delays[delay].append(total)
+
+    cuered_rates = {}
+    for k, v in delays.items():
+        cuered = [p for p in v if p <= 50]
+        cuered_rates[k] = str(100 * float(len(cuered)) / len(v)) + '%'
+
+    for delay in [300, 150, 75, 0]:
+        pylab.figure()
+        pylab.hist(delays[delay])
+        pylab.title('Treatment at %d (followed by 150 time steps treatment)' % delay)
+        pylab.xlabel('Final total virus population -- %s cuered' % cuered_rates[delay])
+        pylab.ylabel('Number of patients')
+
+    pylab.show()
+
+problem5()
 
 #
 # PROBLEM 6
