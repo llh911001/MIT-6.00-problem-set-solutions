@@ -256,7 +256,7 @@ def runSimulation(num_robots, speed, width, height, min_coverage, num_trials,
 
     return all_trials_progress_list
 
-runSimulation(2, 1.0, 5, 5, 0.8, 10, Robot, True)
+#runSimulation(2, 1.0, 5, 5, 0.8, 10, Robot, True)
 
 # === Provided function
 def computeMeans(list_of_lists):
@@ -334,6 +334,7 @@ def showPlot2():
 
     pylab.show()
 
+showPlot2()
 def showPlot3():
     """
     Produces a plot showing dependence of cleaning time on room shape.
